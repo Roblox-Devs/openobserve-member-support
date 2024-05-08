@@ -276,6 +276,8 @@ import SyntaxGuideMetrics from "./SyntaxGuideMetrics.vue";
 import { getConsumableRelativeTime } from "@/utils/date";
 import useStreams from "@/composables/useStreams";
 import SanitizedHtmlRenderer from "@/components/SanitizedHtmlRenderer.vue";
+import useDashboardPanelData from "@/composables/useDashboardPanel";
+import { provide } from "vue";
 
 export default defineComponent({
   name: "AppMetrics",
@@ -324,8 +326,8 @@ export default defineComponent({
     const searchBarRef = ref(null);
     let parser: any;
     const metricsQueryEditorRef = ref(null);
-    const { dashboardPanelData, resetDashboardPanelData } =
-      useMetricsExplorer();
+    provide("dashboardPanelDataPageKey", "metrics");
+    const { dashboardPanelData } = useDashboardPanelData("metrics");
     const {
       autoCompleteData,
       autoCompletePromqlKeywords,
