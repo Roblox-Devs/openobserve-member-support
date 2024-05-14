@@ -159,7 +159,6 @@ import {
 import { useI18n } from "vue-i18n";
 import { useRouter } from "vue-router";
 import { useQuasar } from "quasar";
-
 import ConfirmDialog from "../../../components/ConfirmDialog.vue";
 import useDashboardPanelData from "../../../composables/useDashboardPanel";
 import QueryTypeSelector from "../addPanel/QueryTypeSelector.vue";
@@ -190,7 +189,6 @@ export default defineComponent({
     const {
       dashboardPanelData,
       promqlMode,
-      updateXYFieldsOnCustomQueryChange,
       addQuery,
       removeQuery,
     } = useDashboardPanelData(dashboardPanelDataPageKey);
@@ -775,101 +773,6 @@ export default defineComponent({
       }
     );
 
-    // This function parses the custom query and generates the errors and custom fields
-    const updateQueryValue = () => {
-      // store the query in the dashboard panel data
-      // dashboardPanelData.meta.editorValue = value;
-      // dashboardPanelData.data.query = value;
-
-      if (
-        dashboardPanelData.data.queries[
-          dashboardPanelData.layout.currentQueryIndex
-        ].customQuery &&
-        dashboardPanelData.data.queryType != "promql"
-      ) {
-        // empty the errors
-        dashboardPanelData.meta.errors.queryErrors = [];
-
-        // Get the parsed query
-        try {
-          dashboardPanelData.meta.parsedQuery = parser.astify(
-            dashboardPanelData.data.queries[
-              dashboardPanelData.layout.currentQueryIndex
-            ].query
-          );
-        } catch (e) {
-          // exit as there is an invalid query
-          dashboardPanelData.meta.errors.queryErrors.push("Invalid SQL Syntax");
-          return null;
-        }
-        if (!dashboardPanelData.meta.parsedQuery) {
-          return;
-        }
-
-        // We have the parsed query, now get the columns and tables
-        // get the columns first
-        if (
-          Array.isArray(dashboardPanelData.meta.parsedQuery?.columns) &&
-          dashboardPanelData.meta.parsedQuery?.columns?.length > 0
-        ) {
-          const oldCustomQueryFields = JSON.parse(
-            JSON.stringify(dashboardPanelData.meta.stream.customQueryFields)
-          );
-          dashboardPanelData.meta.stream.customQueryFields = [];
-          dashboardPanelData.meta.parsedQuery.columns.forEach(
-            (item: any, index: any) => {
-              let val;
-              // if there is a lable, use that, else leave it
-              if (item["as"] === undefined || item["as"] === null) {
-                val = item["expr"]["column"];
-              } else {
-                val = item["as"];
-              }
-              if (
-                !dashboardPanelData.meta.stream.customQueryFields.find(
-                  (it) => it.name == val
-                )
-              ) {
-                dashboardPanelData.meta.stream.customQueryFields.push({
-                  name: val,
-                  type: "",
-                });
-              }
-            }
-          );
-
-          // update the existing x and y axis fields
-          updateXYFieldsOnCustomQueryChange(oldCustomQueryFields);
-        } else {
-          dashboardPanelData.meta.errors.queryErrors.push("Invalid Columns");
-        }
-
-        // now check if the correct stream is selected
-        if (dashboardPanelData.meta.parsedQuery.from?.length > 0) {
-          const streamFound = dashboardPanelData.meta.stream.streamResults.find(
-            (it) => it.name == dashboardPanelData.meta.parsedQuery.from[0].table
-          );
-          if (streamFound) {
-            if (
-              dashboardPanelData.data.queries[
-                dashboardPanelData.layout.currentQueryIndex
-              ].fields.stream != streamFound.name
-            ) {
-              dashboardPanelData.data.queries[
-                dashboardPanelData.layout.currentQueryIndex
-              ].fields.stream = streamFound.name;
-            }
-          } else {
-            dashboardPanelData.meta.errors.queryErrors.push("Invalid stream");
-          }
-        } else {
-          dashboardPanelData.meta.errors.queryErrors.push(
-            "Stream name required"
-          );
-        }
-      }
-    };
-
     const updatePromQLQuery = async (event, value) => {
       autoCompleteData.value.query = value;
       autoCompleteData.value.text = event.changes[0].text;
@@ -893,7 +796,6 @@ export default defineComponent({
     return {
       t,
       router,
-      updateQueryValue,
       updatePromQLQuery,
       onDropDownClick,
       promqlMode,
