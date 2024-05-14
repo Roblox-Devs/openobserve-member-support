@@ -425,6 +425,7 @@ fn generate_select_start_search_schema(
             }
         }
     }
+
     let schema = if !defined_schema_fields.is_empty() {
         let mut fields: HashSet<String> = defined_schema_fields.iter().cloned().collect();
         if !fields.contains(&CONFIG.common.column_timestamp) {
