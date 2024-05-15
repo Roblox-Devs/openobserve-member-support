@@ -918,7 +918,7 @@ export default defineComponent({
     SortByBtnGrp,
     HistogramIntervalDropDown,
     DashboardGeoMapQueryBuilder,
-    DashboardSankeyChartBuilder,,
+    DashboardSankeyChartBuilder,
     CommonAutoComplete,
     SanitizedHtmlRenderer,
   },
