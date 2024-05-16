@@ -166,11 +166,13 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
               class="dashboard-icons q-px-sm q-ml-sm hideOnPrintMode"
               size="sm"
               no-caps
-              :icon="isFullscreen ? 'fullscreen_exit' : 'fullscreen'"
+              :icon="
+                quasar.fullscreen.isActive ? 'fullscreen_exit' : 'fullscreen'
+              "
               @click="toggleFullscreen"
               data-test="dashboard-fullscreen-btn"
               ><q-tooltip>{{
-                isFullscreen
+                quasar.fullscreen.isActive
                   ? t("dashboard.exitFullscreen")
                   : t("dashboard.fullscreen")
               }}</q-tooltip></q-btn
@@ -256,6 +258,7 @@ export default defineComponent({
     const router = useRouter();
     const store = useStore();
     const $q = useQuasar();
+    const quasar = useQuasar();
     const currentDashboardData = reactive({
       data: {},
     });
@@ -652,18 +655,24 @@ export default defineComponent({
     const isFullscreen = ref(false);
 
     const toggleFullscreen = () => {
-      if (!document.fullscreenElement) {
-        if (fullscreenDiv.value.requestFullscreen) {
-          fullscreenDiv.value.requestFullscreen();
-        }
-        isFullscreen.value = true;
-        document.body.style.overflow = "hidden"; // Disable body scroll
-      } else {
-        if (document.exitFullscreen) {
-          document.exitFullscreen();
-        }
-        isFullscreen.value = false;
-        document.body.style.overflow = ""; // Enable body scroll
+      if (!quasar.fullscreen.isActive) {
+        quasar.fullscreen
+          .request()
+          .then(() => {
+            isFullscreen.value = true;
+          })
+          .catch(() => {
+            isFullscreen.value = false;
+          });
+      } else {        
+        quasar.fullscreen
+          .exit()
+          .then(() => {
+            isFullscreen.value = false;
+          })
+          .catch(() => {
+            isFullscreen.value = true;
+          });
       }
     };
 
@@ -717,6 +726,7 @@ export default defineComponent({
       printDashboard,
       initialTimezone,
       moment,
+      quasar,
     };
   },
 });
