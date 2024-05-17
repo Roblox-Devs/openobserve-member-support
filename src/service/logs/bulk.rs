@@ -486,7 +486,6 @@ pub async fn ingest(
                     stream_name: stream_name.to_owned().into(),
                     stream_type: StreamType::Logs,
                 },
-                &mut stream_schema_map,
                 &stream_partition_keys_map,
                 &stream_alerts_map,
                 &mut bulk_res,
@@ -555,7 +554,6 @@ pub async fn ingest(
 async fn process_record(
     stream_data: &mut BulkStreamData,
     stream: &StreamParams,
-    stream_schema_map: &mut HashMap<String, SchemaCache>,
     stream_partition_keys_map: &HashMap<String, (StreamSchemaChk, PartitioningDetails)>,
     stream_alerts_map: &HashMap<String, Vec<Alert>>,
     bulk_res: &mut BulkResponse,
@@ -563,7 +561,9 @@ async fn process_record(
 ) -> Result<HashMap<String, crate::common::meta::stream::SchemaRecords>, Error> {
     let mut new_stream_buf = HashMap::new();
     let mut trigger: TriggerAlertData = Vec::new();
+
     for schema_records in stream_data.data.values_mut() {
+        let mut stream_schema_map: HashMap<String, SchemaCache> = HashMap::new();
         // check schema
         let mut min_ts = i64::MAX;
         let mut records: Vec<&serde_json::Map<std::string::String, serde_json::Value>> =
@@ -585,7 +585,7 @@ async fn process_record(
             &stream.org_id,
             &stream.stream_name,
             StreamType::Logs,
-            stream_schema_map,
+            &mut stream_schema_map,
             records.clone(),
             min_ts,
         )
