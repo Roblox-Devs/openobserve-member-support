@@ -404,7 +404,6 @@ export default defineComponent({
 
     const variablesDataUpdated = (data: any) => {
       Object.assign(variablesData, data);
-      // console.log(variablesData, "variablesData");
     };
     const currentDashboardData: any = reactive({
       data: {},
