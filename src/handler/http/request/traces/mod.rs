@@ -16,7 +16,13 @@
 use std::{collections::HashMap, io::Error};
 
 use actix_web::{get, http, post, web, HttpRequest, HttpResponse};
-use config::{ider, meta::stream::StreamType, metrics, utils::json, CONFIG};
+use config::{
+    ider,
+    meta::{search::SearchEventType, stream::StreamType},
+    metrics,
+    utils::json,
+    CONFIG,
+};
 use infra::errors;
 use opentelemetry::{global, trace::TraceContextExt};
 use serde::Serialize;
@@ -26,7 +32,7 @@ use tracing_opentelemetry::OpenTelemetrySpanExt;
 use crate::{
     common::{
         meta::{self, http::HttpResponse as MetaHttpResponse},
-        utils::http::RequestHeaderExtractor,
+        utils::http::{get_search_type_from_request, RequestHeaderExtractor},
     },
     handler::http::request::{CONTENT_TYPE_JSON, CONTENT_TYPE_PROTO},
     service::{search as SearchService, traces::otlp_http},
@@ -158,6 +164,11 @@ pub async fn get_latest_traces(
 
     let query = web::Query::<HashMap<String, String>>::from_query(in_req.query_string()).unwrap();
 
+    let search_type = match get_search_type_from_request(&query) {
+        Ok(v) => v,
+        Err(e) => return Ok(MetaHttpResponse::bad_request(e)),
+    };
+
     // Check permissions on stream
 
     #[cfg(feature = "enterprise")]
@@ -268,6 +279,7 @@ pub async fn get_latest_traces(
         regions: vec![],
         clusters: vec![],
         timeout,
+        search_type,
     };
     let stream_type = StreamType::Traces;
     let user_id = in_req

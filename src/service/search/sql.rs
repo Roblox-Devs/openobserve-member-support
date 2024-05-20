@@ -1010,6 +1010,7 @@ mod tests {
             regions: vec![],
             clusters: vec![],
             timeout: 0,
+            search_type: None,
         };
 
         let mut rpc_req: cluster_rpc::SearchRequest = req.to_owned().into();
@@ -1120,6 +1121,7 @@ mod tests {
                 regions: vec![],
                 clusters: vec![],
                 timeout: 0,
+                search_type: None,
             };
             let mut rpc_req: cluster_rpc::SearchRequest = req.to_owned().into();
             rpc_req.org_id = org_id.to_string();
@@ -1243,6 +1245,7 @@ mod tests {
                 regions: vec![],
                 clusters: vec![],
                 timeout: 0,
+                search_type: None,
             };
             let mut rpc_req: cluster_rpc::SearchRequest = req.to_owned().into();
             rpc_req.org_id = org_id.to_string();

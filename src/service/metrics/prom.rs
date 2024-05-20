@@ -620,6 +620,7 @@ pub(crate) async fn get_series(
         regions: vec![],
         clusters: vec![],
         timeout: 0,
+        search_type: None,
     };
     let series = match search_service::search("", org_id, StreamType::Metrics, None, &req).await {
         Err(err) => {
@@ -764,6 +765,7 @@ pub(crate) async fn get_label_values(
         regions: vec![],
         clusters: vec![],
         timeout: 0,
+        search_type: None,
     };
     let mut label_values = match search_service::search("", org_id, stream_type, None, &req).await {
         Ok(resp) => resp

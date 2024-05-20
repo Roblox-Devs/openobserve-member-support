@@ -20,6 +20,7 @@ use chrono::Duration;
 use config::{
     ider,
     meta::{
+        search::SearchEventType,
         stream::StreamType,
         usage::{RequestStats, UsageType},
     },
@@ -37,7 +38,9 @@ use crate::{
         meta::{self, http::HttpResponse as MetaHttpResponse},
         utils::{
             functions,
-            http::{get_stream_type_from_request, RequestHeaderExtractor},
+            http::{
+                get_search_type_from_request, get_stream_type_from_request, RequestHeaderExtractor,
+            },
         },
     },
     service::{
@@ -141,6 +144,11 @@ pub async fn search(
     let query = web::Query::<HashMap<String, String>>::from_query(in_req.query_string()).unwrap();
     let stream_type = match get_stream_type_from_request(&query) {
         Ok(v) => v.unwrap_or(StreamType::Logs),
+        Err(e) => return Ok(MetaHttpResponse::bad_request(e)),
+    };
+
+    let search_type = match get_search_type_from_request(&query) {
+        Ok(v) => v,
         Err(e) => return Ok(MetaHttpResponse::bad_request(e)),
     };
 
@@ -281,9 +289,11 @@ pub async fn search(
                 min_ts: Some(req.query.start_time),
                 max_ts: Some(req.query.end_time),
                 cached_ratio: Some(res.cached_ratio),
+                search_type,
                 ..Default::default()
             };
             let num_fn = req.query.query_fn.is_some() as u16;
+
             report_request_usage_stats(
                 req_stats,
                 &org_id,
@@ -516,6 +526,7 @@ pub async fn around(
         regions: regions.clone(),
         clusters: clusters.clone(),
         timeout,
+        search_type: Some(SearchEventType::UI),
     };
     let user_id = in_req
         .headers()
@@ -595,6 +606,7 @@ pub async fn around(
         regions,
         clusters,
         timeout,
+        search_type: Some(SearchEventType::UI),
     };
     let search_fut = SearchService::search(&trace_id, &org_id, stream_type, user_id, &req);
     let search_res = if !CONFIG.common.tracing_enabled && CONFIG.common.tracing_search_enabled {
@@ -997,6 +1009,7 @@ async fn values_v1(
         regions,
         clusters,
         timeout,
+        search_type: Some(SearchEventType::Values),
     };
 
     // skip fields which aren't part of the schema
@@ -1119,6 +1132,7 @@ async fn values_v1(
         min_ts: Some(start_time),
         max_ts: Some(end_time),
         cached_ratio: Some(resp.cached_ratio),
+        search_type: Some(SearchEventType::Values),
         ..Default::default()
     };
     let num_fn = req.query.query_fn.is_some() as u16;
@@ -1241,6 +1255,7 @@ async fn values_v2(
         regions,
         clusters,
         timeout,
+        search_type: Some(SearchEventType::Values),
     };
     let search_fut = SearchService::search(
         &trace_id,
@@ -1339,6 +1354,7 @@ async fn values_v2(
         min_ts: Some(start_time),
         max_ts: Some(end_time),
         cached_ratio: Some(resp.cached_ratio),
+        search_type: Some(SearchEventType::Values),
         ..Default::default()
     };
     let num_fn = req.query.query_fn.is_some() as u16;
