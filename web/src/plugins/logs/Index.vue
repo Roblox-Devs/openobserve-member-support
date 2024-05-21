@@ -401,7 +401,7 @@ export default defineComponent({
       () => splitterModel.value,
       (val) => {
         console.log("splitterModel", val);
-        
+
         window.dispatchEvent(new Event("resize"));
       }
     );
@@ -826,7 +826,7 @@ export default defineComponent({
       async () => {
         if (searchObj.meta.logsVisualizeToggle == "visualize") {
           dashboardPanelData.data.queries[0].customQuery = true;
-          searchObj.data.query = addHistogramToQuery(searchObj.data.query);
+          // searchObj.data.query = addHistogramToQuery(searchObj.data.query);
 
           dashboardPanelData.data.queries[0].query = searchObj.data.query ?? "";
           dashboardPanelData.data.queries[0].fields.stream =
@@ -835,9 +835,9 @@ export default defineComponent({
             searchObj.data.stream.streamType ?? "logs";
         } else if (searchObj.meta.logsVisualizeToggle == "logs") {
           await nextTick();
-          searchObj.data.query = removeHistogramFromQuery(
-            searchObj.data.query ?? ""
-          );
+          // searchObj.data.query = removeHistogramFromQuery(
+          //   searchObj.data.query ?? ""
+          // );
         }
       }
     );
