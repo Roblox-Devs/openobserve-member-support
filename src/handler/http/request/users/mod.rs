@@ -15,11 +15,7 @@
 
 use std::io::Error;
 
-use actix_web::{
-    cookie, delete, get,
-    http::{self},
-    post, put, web, HttpRequest, HttpResponse,
-};
+use actix_web::{cookie, delete, get, http, post, put, web, HttpResponse};
 use config::{
     utils::{base64, json},
     CONFIG,
@@ -97,9 +93,7 @@ pub async fn save(
         );
     }
     #[cfg(not(feature = "enterprise"))]
-    {
-        user.role = meta::user::UserRole::Admin;
-    }
+    {}
     users::post_user(&org_id, user, &initiator_id).await
 }
 
@@ -141,9 +135,7 @@ pub async fn update(
         );
     }
     #[cfg(not(feature = "enterprise"))]
-    {
-        user.role = Some(meta::user::UserRole::Admin);
-    }
+    {}
     let initiator_id = &user_email.user_id;
     let self_update = user_email.user_id.eq(&email_id);
     users::update_user(&org_id, &email_id, self_update, initiator_id, user).await
@@ -173,8 +165,7 @@ pub async fn add_user_to_org(
     user_email: UserEmail,
 ) -> Result<HttpResponse, Error> {
     let (org_id, email_id) = params.into_inner();
-    // let role = role.into_inner().role;
-    let role = meta::user::UserRole::Admin;
+    let role = _role.into_inner().role;
     let initiator_id = user_email.user_id;
     users::add_user_to_org(&org_id, &email_id, role, &initiator_id).await
 }
@@ -217,10 +208,7 @@ pub async fn delete(
     )
 )]
 #[post("/login")]
-pub async fn authentication(
-    auth: Option<web::Json<SignInUser>>,
-    _req: HttpRequest,
-) -> Result<HttpResponse, Error> {
+pub async fn authentication(auth: web::Json<SignInUser>) -> Result<HttpResponse, Error> {
     #[cfg(feature = "enterprise")]
     use o2_enterprise::enterprise::common::infra::config::O2_CONFIG;
     #[cfg(feature = "enterprise")]
@@ -233,45 +221,18 @@ pub async fn authentication(
     }
 
     let mut resp = SignInResponse::default();
-    let auth = match auth {
-        Some(auth) => auth.into_inner(),
-        None => {
-            // get Authorization header from request
-            #[cfg(feature = "enterprise")]
-            {
-                let auth_header = _req.headers().get("Authorization");
-                if auth_header.is_some() {
-                    let auth_header = auth_header.unwrap().to_str().unwrap();
-                    if let Some((name, password)) =
-                        o2_enterprise::enterprise::dex::service::auth::get_user_from_token(
-                            auth_header,
-                        )
-                    {
-                        SignInUser { name, password }
-                    } else {
-                        return unauthorized_error(resp);
-                    }
-                } else {
-                    return unauthorized_error(resp);
-                }
-            }
-            #[cfg(not(feature = "enterprise"))]
-            {
-                return unauthorized_error(resp);
-            }
-        }
-    };
-
     match crate::handler::http::auth::validator::validate_user(&auth.name, &auth.password).await {
         Ok(v) => {
             if v.is_valid {
                 resp.status = true;
             } else {
-                return unauthorized_error(resp);
+                resp.status = false;
+                resp.message = "Invalid credentials".to_string();
             }
         }
         Err(_e) => {
-            return unauthorized_error(resp);
+            resp.status = false;
+            resp.message = "Invalid credentials".to_string();
         }
     };
     if resp.status {
@@ -299,97 +260,7 @@ pub async fn authentication(
         }
         Ok(HttpResponse::Ok().cookie(auth_cookie).json(resp))
     } else {
-        unauthorized_error(resp)
-    }
-}
-
-#[get("/login")]
-pub async fn get_auth(_req: HttpRequest) -> Result<HttpResponse, Error> {
-    #[cfg(feature = "enterprise")]
-    {
-        use actix_web::http::header;
-
-        use crate::handler::http::auth::validator::ID_TOKEN_HEADER;
-
-        let mut resp = SignInResponse::default();
-        if let Some(auth_header) = _req.headers().get("Authorization") {
-            if let Ok(auth_header) = auth_header.to_str() {
-                if let Some((name, password)) =
-                    o2_enterprise::enterprise::dex::service::auth::get_user_from_token(auth_header)
-                {
-                    match crate::handler::http::auth::validator::validate_user(&name, &password)
-                        .await
-                    {
-                        Ok(v) => {
-                            if v.is_valid {
-                                resp.status = true;
-                            } else {
-                                return unauthorized_error(resp);
-                            }
-                        }
-                        Err(_) => {
-                            return unauthorized_error(resp);
-                        }
-                    };
-
-                    if resp.status {
-                        let access_token = format!(
-                            "Basic {}",
-                            base64::encode(&format!("{}:{}", &name, &password))
-                        );
-
-                        let id_token = config::utils::json::json!({
-                            "email": name,
-                            "name": name,
-                        });
-                        let tokens = json::to_string(&AuthTokens {
-                            access_token,
-                            refresh_token: "".to_string(),
-                        })
-                        .unwrap();
-
-                        let mut auth_cookie = cookie::Cookie::new("auth_tokens", tokens);
-                        auth_cookie.set_expires(
-                            cookie::time::OffsetDateTime::now_utc()
-                                + cookie::time::Duration::seconds(CONFIG.auth.cookie_max_age),
-                        );
-                        auth_cookie.set_http_only(true);
-                        auth_cookie.set_secure(CONFIG.auth.cookie_secure_only);
-                        auth_cookie.set_path("/");
-
-                        if CONFIG.auth.cookie_same_site_lax {
-                            auth_cookie.set_same_site(cookie::SameSite::Lax);
-                        } else {
-                            auth_cookie.set_same_site(cookie::SameSite::None);
-                        }
-                        let url = format!(
-                            "{}{}/web/cb#id_token={}.{}",
-                            CONFIG.common.web_url,
-                            CONFIG.common.base_uri,
-                            ID_TOKEN_HEADER,
-                            base64::encode(&id_token.to_string())
-                        );
-                        return Ok(HttpResponse::Found()
-                            .append_header((header::LOCATION, url))
-                            .cookie(auth_cookie)
-                            .json(resp));
-                    } else {
-                        unauthorized_error(resp)
-                    }
-                } else {
-                    unauthorized_error(resp)
-                }
-            } else {
-                unauthorized_error(resp)
-            }
-        } else {
-            unauthorized_error(resp)
-        }
-    }
-
-    #[cfg(not(feature = "enterprise"))]
-    {
-        Ok(HttpResponse::Forbidden().json("Not Supported"))
+        Ok(HttpResponse::Unauthorized().json(resp))
     }
 }
 
@@ -424,10 +295,4 @@ pub async fn list_roles(_org_id: web::Path<String>) -> Result<HttpResponse, Erro
         .collect::<Vec<RolesResponse>>();
 
     Ok(HttpResponse::Ok().json(roles))
-}
-
-fn unauthorized_error(mut resp: SignInResponse) -> Result<HttpResponse, Error> {
-    resp.status = false;
-    resp.message = "Invalid credentials".to_string();
-    Ok(HttpResponse::Unauthorized().json(resp))
 }

@@ -299,7 +299,7 @@ export default defineComponent({
         sortable: true,
       },
       {
-        name: "role",
+        name: "role", 
         field: "role",
         label: t("user.role"),
         align: "left",
@@ -307,7 +307,7 @@ export default defineComponent({
       },
     ]);
     const userEmail: any = ref("");
-    const options = ref([{ label: "Admin", value: "admin" }]);
+    const options = ref([{ label: "Admin", value: "admin" }, { label: "Member", value: "member" }]);
     const selectedRole = ref(options.value[0].value);
     const currentUserRole = ref("");
     let deleteUserEmail = "";

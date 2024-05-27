@@ -21,6 +21,7 @@ use actix_web::{
 };
 use actix_web_httpauth::extractors::basic::BasicAuth;
 use config::{utils::base64, CONFIG};
+use regex::Regex;
 
 use crate::{
     common::{
@@ -37,7 +38,6 @@ pub const PKCE_STATE_ORG: &str = "o2_pkce_state";
 pub const ACCESS_TOKEN: &str = "access_token";
 pub const REFRESH_TOKEN: &str = "refresh_token";
 pub const ID_TOKEN_HEADER: &str = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9";
-
 pub async fn validator(
     req: ServiceRequest,
     user_id: &str,
@@ -68,13 +68,26 @@ pub async fn validator(
                     header::HeaderName::from_static("user_id"),
                     header::HeaderValue::from_str(&res.user_email).unwrap(),
                 );
-
-                if auth_info.bypass_check
-                    || check_permissions(user_id, auth_info, res.user_role).await
-                {
-                    Ok(req)
+                if (req.method().eq(&Method::GET)) {
+                    if auth_info.bypass_check
+                        || check_permissions(user_id, auth_info, res.user_role).await
+                    {
+                        Ok(req)
+                    } else {
+                        Err((ErrorForbidden("Unauthorized Access"), req))
+                    }
                 } else {
-                    Err((ErrorForbidden("Unauthorized Access"), req))
+                    let pattern = r"/api/[^/]+/(search|_search_partition)";
+                    let re = Regex::new(pattern).unwrap();
+
+                    if (auth_info.bypass_check
+                        && check_permissions(user_id, auth_info, res.user_role).await)
+                        || re.is_match(req.path()) && req.method().eq(&Method::POST)
+                    {
+                        Ok(req)
+                    } else {
+                        Err((ErrorForbidden("Unauthorized Access"), req))
+                    }
                 }
             } else {
                 Err((ErrorUnauthorized("Unauthorized Access"), req))
@@ -483,9 +496,13 @@ pub(crate) async fn check_permissions(
 pub(crate) async fn check_permissions(
     _user_id: &str,
     _auth_info: AuthExtractor,
-    _role: Option<UserRole>,
+    role: Option<UserRole>,
 ) -> bool {
-    true
+    if (role.eq(&Some(UserRole::Root))) {
+        true
+    } else {
+        false
+    }
 }
 
 #[cfg(feature = "enterprise")]

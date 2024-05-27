@@ -203,6 +203,10 @@ export default defineComponent({
           label: "Admin",
           value: "admin",
         },
+        {
+          label: "Member",
+          value: "member",
+        },
       ],
     },
   },

@@ -96,7 +96,7 @@ export default defineComponent({
     const store: any = useStore();
     const { t } = useI18n();
     const $q = useQuasar();
-    const roleOptions = ["admin"];
+    const roleOptions = ["admin", "member"];
     const orgMemberData: any = ref(defaultValue());
     const updateUserForm: any = ref(null);
 
