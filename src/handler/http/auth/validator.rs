@@ -77,7 +77,7 @@ pub async fn validator(
                         Err((ErrorForbidden("Unauthorized Access"), req))
                     }
                 } else {
-                    let pattern = r"/api/[^/]+/(search|_search_partition)";
+                    let pattern = r"/api/[^/]+/(_search|_search_partition)";
                     let re = Regex::new(pattern).unwrap();
 
                     if (auth_info.bypass_check
