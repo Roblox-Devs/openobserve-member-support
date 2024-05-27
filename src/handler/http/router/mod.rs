@@ -200,8 +200,7 @@ pub fn get_basic_routes(cfg: &mut web::ServiceConfig) {
     cfg.service(
         web::scope("/auth")
             .wrap(cors.clone())
-            .service(users::authentication)
-            .service(users::get_auth),
+            .service(users::authentication),
     );
 
     cfg.service(
